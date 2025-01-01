@@ -9,6 +9,7 @@ struct Args {
     size: usize,
     input: Vec<u8>,
 
+    #[arg(short, long)]
     verbose: bool,
 }
 
