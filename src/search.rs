@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{intersections, AttemptParams, Position, DIRECTIONS, ZERO_POS};
+use crate::{intersects, AttemptParams, Position, DIRECTIONS, ZERO_POS};
 
 pub fn search(
     params: &mut AttemptParams,
@@ -35,37 +35,40 @@ pub fn search(
                 continue;
             }
 
-            let mut moves: HashSet<Position> = HashSet::new();
-            for dist in 1..element + 1 {
-                moves.insert(params.position + *dir_vector * dist as i8);
-            }
+            // Aggregate newly occupied coordinates
+            let moves: HashSet<Position> = (1..=element)
+                .map(|dist| params.position + *dir_vector * dist as i8)
+                .collect();
 
-            let isx = intersections([moves.clone(), params.state.clone()].iter());
-            if moves.contains(&ZERO_POS) || !isx.is_empty() {
+            // Check if any of those coordinates is already occupied
+            if moves.contains(&ZERO_POS) || intersects([moves.clone(), params.state.clone()].iter())
+            {
                 continue;
             }
 
-            // Update bounds
-            let mut bounds = params.bounds.clone();
+            // Backup & update bounds
+            let bounds = params.bounds.clone();
             let dir_sign = dir_vector.sign();
             if (dir_sign > 0 && relevant_coord > *bound)
                 || (dir_sign < 0 && relevant_coord < *bound)
             {
-                bounds.insert(*dir_vector, relevant_coord);
+                params.bounds.insert(*dir_vector, relevant_coord);
             }
 
+            // Add moves to state
             for m in &moves {
                 params.state.insert(*m);
             }
-
-            let pos = params.position;
-            let original_dir = params.direction;
 
             params.solution.push((
                 dir_vector.to_string().chars().next().unwrap(),
                 element,
                 new_pos,
             ));
+
+            // Backup pos and direction
+            let pos = params.position;
+            let original_dir = params.direction;
             params.position = new_pos;
             params.direction = Some(*dir_vector);
 
