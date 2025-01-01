@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use clap::Parser;
 use snakube::{search, AttemptParams};
 
@@ -10,24 +12,31 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let input = if args.input.is_empty() {
+    let size = if args.input.is_empty() { 4 } else { args.size };
+    let mut input = if args.input.is_empty() {
         // &vec![2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 2]
-        &vec![
+        vec![
             1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 3, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1,
             1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 3, 1, 1, 2, 1, 2,
         ]
     } else {
-        &args.input
+        args.input
     };
-    let size = if args.input.is_empty() { 4 } else { args.size };
+    input.reverse();
 
-    validate_input(size, input)?;
+    validate_input(size, &input)?;
 
-    let mut params = AttemptParams::new(input);
-    if let Some(res) = search(&mut params, size, 1) {
-        for (dir, amt, pos) in res {
+    let mut params = AttemptParams::new(&input);
+
+    let now = Instant::now();
+    let res = search(&mut params, size, 1);
+    let elapsed = now.elapsed();
+
+    if let Some(r) = res {
+        for (dir, amt, pos) in r {
             println!("{} {} to {}", dir, amt, pos);
         }
+        println!("Solution found in {:.2?}", elapsed);
     } else {
         println!("No solution found.");
     }

@@ -132,31 +132,15 @@ pub fn search(
     size: usize,
     _depth: usize,
 ) -> Option<Vec<(char, u8, Position)>> {
-    for s in &params.solution {
-        print!("{}", s.0);
-    }
-    println!();
-
     if params.input_queue.is_empty() {
         return Some(params.solution.clone());
     }
     let element = params.input_queue.pop().unwrap();
 
     for (dir_name, dir_vector) in DIRECTIONS.iter() {
-        let mut bounds = params.bounds.to_owned();
-        let mut state = params.state.to_owned();
-        let direction = params.direction;
-        let position = params.position.to_owned();
-        let mut solution = params.solution.to_owned();
-
-        if direction.is_none() || (*dir_vector * direction.unwrap()).abs() != 1 {
-            // println!(
-            //     "Trying to move {} by {} from {}",
-            //     dir_vector, element, position
-            // );
-
+        if params.direction.is_none() || (*dir_vector * params.direction.unwrap()).abs() != 1 {
             let offset = *dir_vector * element as i8;
-            let new_pos = position + offset;
+            let new_pos = params.position + offset;
 
             let relevant_coord = match *dir_name {
                 "UP" | "DOWN" => new_pos.y,
@@ -167,34 +151,25 @@ pub fn search(
 
             let opposing_direction = *dir_vector * -1;
 
-            let bound = bounds.get(dir_vector).unwrap();
-            let opposing_bound = bounds.get(&opposing_direction).unwrap();
+            let bound = params.bounds.get(dir_vector).unwrap();
+            let opposing_bound = params.bounds.get(&opposing_direction).unwrap();
 
             if (relevant_coord - opposing_bound).unsigned_abs() >= size as u8 {
-                // println!(
-                //     "Move {} from {}, to {} would violate {} bound of {}",
-                //     dir_vector, position, new_pos, opposing_direction, opposing_bound
-                // );
                 continue;
             }
-            // println!(
-            //     "Move {} from {}, to {} does not violate {} bound of {}",
-            //     dir_vector, position, new_pos, opposing_direction, opposing_bound
-            // );
 
             let mut moves: HashSet<Position> = HashSet::new();
             for dist in 1..element + 1 {
-                moves.insert(position + *dir_vector * dist as i8);
+                moves.insert(params.position + *dir_vector * dist as i8);
             }
 
-            let isx = intersections([moves.clone(), state.clone()].iter());
+            let isx = intersections([moves.clone(), params.state.clone()].iter());
             if moves.contains(&ZERO_POS) || !isx.is_empty() {
-                // println!("Moves {:?} would collide", moves);
-                // println!("States intersect at {:?}", isx);
                 continue;
             }
 
             // Update bounds
+            let mut bounds = params.bounds.clone();
             let dir_sign = dir_vector.sign();
             if (dir_sign > 0 && relevant_coord > *bound)
                 || (dir_sign < 0 && relevant_coord < *bound)
@@ -202,34 +177,34 @@ pub fn search(
                 bounds.insert(*dir_vector, relevant_coord);
             }
 
-            for m in moves {
-                state.insert(m);
+            for m in &moves {
+                params.state.insert(*m);
             }
 
-            // println!(
-            //     "Made move by vector ({}, {}, {})",
-            //     offset.x, offset.y, offset.z
-            // );
-            solution.push((
+            let pos = params.position;
+            let original_dir = params.direction;
+
+            params.solution.push((
                 dir_vector.to_string().chars().next().unwrap(),
                 element,
                 new_pos,
             ));
+            params.position = new_pos;
+            params.direction = Some(*dir_vector);
 
-            let mut new_params = AttemptParams {
-                input_queue: params.input_queue.clone(),
-                bounds,
-                state,
-                direction: Some(*dir_vector),
-                position: new_pos,
-                solution,
-            };
-
-            if let Some(attempt) = search(&mut new_params, size, _depth + 1) {
+            if let Some(attempt) = search(params, size, _depth + 1) {
                 return Some(attempt);
             }
+
+            // Backtrack
+            params.solution.pop();
+            params.state.retain(|k| !moves.contains(k));
+            params.position = pos;
+            params.direction = original_dir;
+            params.bounds = bounds;
         }
     }
+    params.input_queue.push(element);
     None
 }
 
