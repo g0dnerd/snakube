@@ -129,18 +129,19 @@ impl AttemptParams {
     }
 }
 
-fn intersections<'a, T>(mut sets: impl Iterator<Item = &'a HashSet<T>>) -> HashSet<T>
+fn intersects<'a, T>(mut sets: impl Iterator<Item = &'a HashSet<T>>) -> bool
 where
-    T: Clone + Eq + Hash + 'a,
+    T: Eq + Hash + 'a,
 {
-    match sets.next() {
-        Some(first) => sets.fold(first.clone(), |mut acc, set| {
-            acc.retain(|item| set.contains(item));
-            acc
-        }),
-
-        None => HashSet::new(),
+    if let Some(first_set) = sets.next() {
+        for set in sets {
+            // Check for any common element
+            if first_set.iter().any(|item| set.contains(item)) {
+                return true;
+            }
+        }
     }
+    false
 }
 
 #[cfg(test)]
@@ -189,9 +190,9 @@ mod tests {
         let pos4 = Position { x: 0, y: 0, z: 1 };
         let a = HashSet::from([pos1, pos2]);
         let b = HashSet::from([pos3, pos4]);
-        assert!(intersections([a.clone(), b.clone()].iter()).is_empty());
+        assert!(!intersects([a.clone(), b.clone()].iter()));
 
         let c = HashSet::from([pos1, pos3]);
-        assert!(!intersections([a.clone(), c.clone()].iter()).is_empty());
+        assert!(intersects([a.clone(), c.clone()].iter()));
     }
 }
