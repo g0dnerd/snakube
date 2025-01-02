@@ -1,4 +1,3 @@
-// use std::collections::HashSet;
 use crate::{AttemptParams, Position, DIRECTIONS, ZERO_POS};
 
 pub fn search(
@@ -14,7 +13,7 @@ pub fn search(
 
     let element = params.input_queue.pop().unwrap();
 
-    'outer: for (dir_name, dir_vector) in DIRECTIONS.iter() {
+    'outer: for (dir_idx, (dir_name, dir_vector)) in DIRECTIONS.iter().enumerate() {
         // Only check directions that are not the same as or the cardinal direction to
         // the previously used one. Check all directions for the first iteration.
         if params.direction.is_none() || (*dir_vector * params.direction.unwrap()).abs() != 1 {
@@ -27,38 +26,35 @@ pub fn search(
             let relevant_coord = new_pos.coord_by_dir(dir_name);
 
             // Check if we are violating bounds
-            let opposing_direction = *dir_vector * -1;
-            let bound = params.bounds.get(dir_vector).unwrap();
-            let opposing_bound = params.bounds.get(&opposing_direction).unwrap();
+            let dir_sign = dir_vector.sign();
+            let opposing_dir_idx = (dir_idx as i8 + dir_sign) as usize;
+            let opposing_bound = params.bounds.get_by_index(opposing_dir_idx);
             if (relevant_coord - opposing_bound).unsigned_abs() >= size as u8 {
                 continue;
             }
 
             // Backup & update bounds
-            let original_bounds = params.bounds.clone();
-            let dir_sign = dir_vector.sign();
-            if (dir_sign > 0 && relevant_coord > *bound)
-                || (dir_sign < 0 && relevant_coord < *bound)
+            let bound = params.bounds.get_by_index(dir_idx);
+            let original_bounds = params.bounds;
+            if (dir_sign > 0 && relevant_coord > bound) || (dir_sign < 0 && relevant_coord < bound)
             {
-                params.bounds.insert(*dir_vector, relevant_coord);
+                params.bounds.update_by_index(dir_idx, relevant_coord);
             }
 
-            // Aggregate newly occupied coordinates in steps of 1 and
-            // check if any of those coordinates is already occupied.
+            // Iterate over potentially occupied coordinates in steps of 1 and
+            // check if any of those coordinates are already occupied.
             // Add them to state if not.
             let original_state = params.state.clone();
             for dist in 1..=element {
                 let candidate = params.position + *dir_vector * dist as i8;
-                if candidate == ZERO_POS || params.state.contains(&candidate) {
+                if candidate == ZERO_POS || params.state.is_visited(candidate) {
+                    params.state = original_state;
                     continue 'outer;
                 }
-                params.state.insert(candidate);
+                params.state.mark_visited(candidate);
             }
 
-            // Add moves to state and solution
-            // for m in &moves {
-            //     params.state.insert(*m);
-            // }
+            // Add moves to solution
             params
                 .solution
                 .push((dir_vector.abbreviation(), element, new_pos));
@@ -82,7 +78,6 @@ pub fn search(
 
             // Backtrack
             params.solution.pop();
-            // params.state.retain(|k| !moves.contains(k));
             params.state = original_state;
             params.position = original_pos;
             params.direction = original_dir;
