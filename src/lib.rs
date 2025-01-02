@@ -25,6 +25,17 @@ pub struct Position {
     pub z: i8,
 }
 
+impl Position {
+    pub fn coord_by_dir(&self, dir: &str) -> i8 {
+        match dir {
+            "UP" | "DOWN" => self.y,
+            "LEFT" | "RIGHT" => self.x,
+            "OUT" | "IN" => self.z,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl std::ops::Add<Direction> for Position {
     type Output = Self;
 
@@ -52,6 +63,22 @@ pub struct Direction {
 impl Direction {
     pub fn sign(&self) -> i8 {
         self.x + self.y + self.z
+    }
+
+    pub fn abbreviation(&self) -> char {
+        match self.x.signum() {
+            1 => 'R',
+            -1 => 'L',
+            _ => match self.y.signum() {
+                1 => 'U',
+                -1 => 'D',
+                _ => match self.z.signum() {
+                    1 => 'O',
+                    -1 => 'I',
+                    _ => unreachable!(),
+                },
+            },
+        }
     }
 }
 
@@ -129,21 +156,6 @@ impl AttemptParams {
     }
 }
 
-fn intersects<'a, T>(mut sets: impl Iterator<Item = &'a HashSet<T>>) -> bool
-where
-    T: Eq + Hash + 'a,
-{
-    if let Some(first_set) = sets.next() {
-        for set in sets {
-            // Check for any common element
-            if first_set.iter().any(|item| set.contains(item)) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,19 +192,5 @@ mod tests {
             moves,
             HashSet::from([Position { x: 1, y: 1, z: 0 }, Position { x: 1, y: 2, z: 0 },])
         );
-    }
-
-    #[test]
-    fn intersect() {
-        let pos1 = Position { x: 0, y: 0, z: 0 };
-        let pos2 = Position { x: 1, y: 0, z: 0 };
-        let pos3 = Position { x: 0, y: 1, z: 0 };
-        let pos4 = Position { x: 0, y: 0, z: 1 };
-        let a = HashSet::from([pos1, pos2]);
-        let b = HashSet::from([pos3, pos4]);
-        assert!(!intersects([a.clone(), b.clone()].iter()));
-
-        let c = HashSet::from([pos1, pos3]);
-        assert!(intersects([a.clone(), c.clone()].iter()));
     }
 }
