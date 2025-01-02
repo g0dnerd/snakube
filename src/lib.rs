@@ -45,7 +45,7 @@ impl Bounds {
         }
     }
 
-    pub fn update_by_index(&mut self, idx: usize, value: i8, sign: i8) {
+    pub fn set_by_idx(&mut self, idx: usize, value: i8, sign: i8) {
         let bound = self.values[idx];
         if sign * value > sign * bound {
             self.values[idx] = value;
@@ -139,7 +139,7 @@ impl Direction {
         self.x + self.y + self.z
     }
 
-    pub fn abbreviation(&self) -> char {
+    pub fn abbr(&self) -> char {
         match self.x.signum() {
             1 => 'R',
             -1 => 'L',

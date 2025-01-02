@@ -6,8 +6,10 @@ use snakube::{search, AttemptParams};
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Args {
-    size: usize,
-    input: Vec<u8>,
+    #[arg(short, long)]
+    size: Option<usize>,
+    #[arg(short, long)]
+    input: Option<Vec<u8>>,
 
     #[arg(short, long)]
     verbose: bool,
@@ -18,15 +20,11 @@ fn main() -> anyhow::Result<()> {
     let verbose = args.verbose;
 
     // Fallback to IRL cube if no input is given
-    let size = if args.input.is_empty() { 4 } else { args.size };
-    let mut input = if args.input.is_empty() {
-        vec![
-            1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 3, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1,
-            1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 3, 1, 1, 2, 1, 2,
-        ]
-    } else {
-        args.input
-    };
+    let size = args.size.unwrap_or(4);
+    let mut input = args.input.unwrap_or(vec![
+        1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 3, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1,
+        1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 3, 1, 1, 2, 1, 2,
+    ]);
     input.reverse();
 
     validate_input(size, &input)?;

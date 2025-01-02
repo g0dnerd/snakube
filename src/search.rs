@@ -35,9 +35,7 @@ pub fn search(
 
             // Backup & update bounds
             let original_bounds = params.bounds;
-            params
-                .bounds
-                .update_by_index(dir_idx, relevant_coord, dir_sign);
+            params.bounds.set_by_idx(dir_idx, relevant_coord, dir_sign);
 
             // Iterate over potentially occupied coordinates in steps of 1 and
             // check if any of those coordinates are already occupied.
@@ -53,9 +51,7 @@ pub fn search(
             }
 
             // Add moves to solution
-            params
-                .solution
-                .push((dir_vector.abbreviation(), element, new_pos));
+            params.solution.push((dir_vector.abbr(), element, new_pos));
 
             // Backup pos and direction
             let original_pos = params.position;
