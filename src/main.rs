@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
 
     validate_input(size, &input)?;
 
-    let mut params = AttemptParams::new(&input);
+    let mut params = AttemptParams::new(&input, size);
 
     let now = Instant::now();
     let res = search::search(&mut params, size, verbose, 1);

@@ -1,4 +1,3 @@
-// use std::collections::HashSet;
 use crate::{AttemptParams, Position, DIRECTIONS, ZERO_POS};
 
 pub fn search(
@@ -49,10 +48,10 @@ pub fn search(
             let original_state = params.state.clone();
             for dist in 1..=element {
                 let candidate = params.position + *dir_vector * dist as i8;
-                if candidate == ZERO_POS || params.state.contains(&candidate) {
+                if candidate == ZERO_POS || params.state.is_visited(candidate) {
                     continue 'outer;
                 }
-                params.state.insert(candidate);
+                params.state.mark_visited(candidate);
             }
 
             // Add moves to state and solution
