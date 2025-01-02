@@ -11,14 +11,10 @@ struct Args {
 
     #[arg(short, long, value_delimiter = ',')]
     input: Option<Vec<u8>>,
-
-    #[arg(short, long)]
-    verbose: bool,
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let verbose = args.verbose;
 
     // Fallback to IRL cube if no input is given
     let size = args.size.unwrap_or(4);
@@ -33,12 +29,12 @@ fn main() -> anyhow::Result<()> {
     let mut params = AttemptParams::new(&input, size);
 
     let now = Instant::now();
-    let res = search::search(&mut params, size, verbose, 1);
+    let res = search::search(&mut params, size, 1);
     let elapsed = now.elapsed();
 
     if let Some(r) = res {
-        for (dir, amt, pos) in r {
-            println!("{} {} to {}", dir, amt, pos);
+        for pos in r {
+            println!("{}", pos);
         }
         println!("Solution found in {:.2?}", elapsed);
     } else {
