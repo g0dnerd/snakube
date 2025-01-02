@@ -14,7 +14,7 @@ pub fn search(
     let element = params.input_queue.pop().unwrap();
 
     'outer: for (dir_idx, (dir_name, dir_vector)) in DIRECTIONS.iter().enumerate() {
-        // Only check directions that are not the same as or the cardinal direction to
+        // Only check directions that are not the same as or the opposite direction to
         // the previously used one. Check all directions for the first iteration.
         if params.direction.is_none() || (*dir_vector * params.direction.unwrap()).abs() != 1 {
             // Movement vector as dot product of direction and distance,
@@ -34,19 +34,17 @@ pub fn search(
             }
 
             // Backup & update bounds
-            let bound = params.bounds.get_by_index(dir_idx);
             let original_bounds = params.bounds;
-            if (dir_sign > 0 && relevant_coord > bound) || (dir_sign < 0 && relevant_coord < bound)
-            {
-                params.bounds.update_by_index(dir_idx, relevant_coord);
-            }
+            params
+                .bounds
+                .update_by_index(dir_idx, relevant_coord, dir_sign);
 
             // Iterate over potentially occupied coordinates in steps of 1 and
             // check if any of those coordinates are already occupied.
             // Add them to state if not.
             let original_state = params.state.clone();
-            for dist in 1..=element {
-                let candidate = params.position + *dir_vector * dist as i8;
+            for step in 1..=element {
+                let candidate = params.position + *dir_vector * step as i8;
                 if candidate == ZERO_POS || params.state.is_visited(candidate) {
                     params.state = original_state;
                     continue 'outer;

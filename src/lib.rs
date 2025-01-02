@@ -45,8 +45,11 @@ impl Bounds {
         }
     }
 
-    pub fn update_by_index(&mut self, idx: usize, value: i8) {
-        self.values[idx] = value;
+    pub fn update_by_index(&mut self, idx: usize, value: i8, sign: i8) {
+        let bound = self.values[idx];
+        if sign * value > sign * bound {
+            self.values[idx] = value;
+        }
     }
 }
 
