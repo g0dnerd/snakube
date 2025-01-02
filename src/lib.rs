@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::hash::Hash;
 
 pub mod search;
@@ -7,47 +6,24 @@ const ZERO_POS: Position = Position { x: 0, y: 0, z: 0 };
 
 #[derive(Default, Copy, Clone)]
 pub struct Bounds {
+    // Stores bounds in each cardinal direction
+    // The following indices are used:
+    // 0: UP
+    // 1: DOWN
+    // 2: RIGHT
+    // 3: LEFT
+    // 4: OUT
+    // 5: IN
     values: [i8; 6],
-    // _up: i8,
-    // _down: i8,
-    // _right: i8,
-    // _left: i8,
-    // _out: i8,
-    // _in: i8,
 }
 
 impl Bounds {
-    pub fn get_by_direction(&self, dir: &str) -> i8 {
-        match dir {
-            "UP" => self.values[0],
-            "DOWN" => self.values[1],
-            "RIGHT" => self.values[2],
-            "LEFT" => self.values[3],
-            "OUT" => self.values[4],
-            "IN" => self.values[5],
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn get_by_index(&self, index: usize) -> i8 {
-        self.values[index]
-    }
-
-    pub fn update_by_direction(&mut self, dir: &str, value: i8) {
-        match dir {
-            "UP" => self.values[0] = value,
-            "DOWN" => self.values[1] = value,
-            "RIGHT" => self.values[2] = value,
-            "LEFT" => self.values[3] = value,
-            "OUT" => self.values[4] = value,
-            "IN" => self.values[5] = value,
-            _ => unreachable!(),
-        }
+    pub fn get_by_index(&self, idx: usize) -> i8 {
+        self.values[idx]
     }
 
     pub fn set_by_idx(&mut self, idx: usize, value: i8, sign: i8) {
-        let bound = self.values[idx];
-        if sign * value > sign * bound {
+        if (value - self.values[idx]) * sign > 0 {
             self.values[idx] = value;
         }
     }
@@ -55,13 +31,14 @@ impl Bounds {
 
 #[derive(Debug, Clone)]
 pub struct Bitmask {
+    // Stores visited coordinates in by masking them into 64-bit integers
     size: usize,
     bits: Vec<u64>,
 }
 
 impl Bitmask {
     pub fn new(size: usize) -> Self {
-        // Have extra padding on the bit count because we later
+        // There is extra padding on the bit count because we later
         // need to pad negative coordinates into positive space
         let bit_count = (size + size - 1).pow(3);
         let word_count = (bit_count + 63) / 64;
@@ -72,12 +49,16 @@ impl Bitmask {
     }
 
     fn get_index(&self, pos: Position) -> (usize, u64) {
+        // Pad coordinates into known positive space
         let padded_x = (pos.x + self.size as i8) as usize;
         let padded_y = (pos.y + self.size as i8) as usize;
         let padded_z = (pos.z + self.size as i8) as usize;
-        let idx = padded_x * self.size * self.size + padded_y * self.size + padded_z;
-        let word_idx = idx / 64;
-        let bit_idx = idx % 64;
+
+        // Index for (x, y, z) and size n = (xn^2 + yn + z)/64
+        let shift = self.size.trailing_zeros();
+        let idx = (padded_x << (2 * shift)) + (padded_y << shift) + padded_z;
+        let word_idx = idx >> 6;
+        let bit_idx = idx & 0x3F;
         (word_idx, 1 << bit_idx)
     }
 
@@ -90,6 +71,10 @@ impl Bitmask {
         let (word_idx, bit_mask) = self.get_index(pos);
         self.bits[word_idx] |= bit_mask;
     }
+
+    pub fn backtrack(&mut self, bits: Vec<u64>) {
+        self.bits = bits;
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
@@ -100,11 +85,11 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn coord_by_dir(&self, dir: &str) -> i8 {
-        match dir {
-            "UP" | "DOWN" => self.y,
-            "LEFT" | "RIGHT" => self.x,
-            "OUT" | "IN" => self.z,
+    pub fn coord_by_dir_idx(&self, dir_idx: usize) -> i8 {
+        match dir_idx {
+            0 | 1 => self.y,
+            2 | 3 => self.x,
+            4 | 5 => self.z,
             _ => unreachable!(),
         }
     }
@@ -121,7 +106,7 @@ impl std::ops::Add<Direction> for Position {
     }
 }
 
-impl Display for Position {
+impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({}, {}, {})", self.x, self.y, self.z)
     }
@@ -138,38 +123,18 @@ impl Direction {
     pub fn sign(&self) -> i8 {
         self.x + self.y + self.z
     }
-
-    pub fn abbr(&self) -> char {
-        match self.x.signum() {
-            1 => 'R',
-            -1 => 'L',
-            _ => match self.y.signum() {
-                1 => 'U',
-                -1 => 'D',
-                _ => match self.z.signum() {
-                    1 => 'O',
-                    -1 => 'I',
-                    _ => unreachable!(),
-                },
-            },
-        }
-    }
 }
 
-impl Display for Direction {
+impl std::fmt::Display for Direction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.x.signum() {
-            1 => write!(f, "RIGHT"),
-            -1 => write!(f, "LEFT"),
-            _ => match self.y.signum() {
-                1 => write!(f, "UP"),
-                -1 => write!(f, "DOWN"),
-                _ => match self.z.signum() {
-                    1 => write!(f, "OUT"),
-                    -1 => write!(f, "IN"),
-                    _ => unreachable!(),
-                },
-            },
+        match self.x * 3 + self.y * 2 + self.z {
+            2 => write!(f, "U"),  // UP
+            -2 => write!(f, "D"), // DOWN
+            3 => write!(f, "R"),  // RIGHT
+            -3 => write!(f, "L"), // LEFT
+            1 => write!(f, "O"),  // OUT
+            -1 => write!(f, "I"), // IN
+            _ => unreachable!(),
         }
     }
 }
@@ -202,16 +167,16 @@ pub struct AttemptParams {
     pub state: Bitmask,
     pub direction: Option<Direction>,
     pub position: Position,
-    pub solution: Vec<(char, u8, Position)>,
+    pub solution: Vec<Position>,
 }
 
-const DIRECTIONS: [(&str, Direction); 6] = [
-    ("UP", Direction { x: 0, y: 1, z: 0 }),
-    ("DOWN", Direction { x: 0, y: -1, z: 0 }),
-    ("RIGHT", Direction { x: 1, y: 0, z: 0 }),
-    ("LEFT", Direction { x: -1, y: 0, z: 0 }),
-    ("OUT", Direction { x: 0, y: 0, z: 1 }),
-    ("IN", Direction { x: 0, y: 0, z: -1 }),
+const DIRECTIONS: [Direction; 6] = [
+    Direction { x: 0, y: 1, z: 0 },
+    Direction { x: 0, y: -1, z: 0 },
+    Direction { x: 1, y: 0, z: 0 },
+    Direction { x: -1, y: 0, z: 0 },
+    Direction { x: 0, y: 0, z: 1 },
+    Direction { x: 0, y: 0, z: -1 },
 ];
 
 impl AttemptParams {
