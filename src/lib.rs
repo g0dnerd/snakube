@@ -1,22 +1,54 @@
-use lazy_static::lazy_static;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::hash::Hash;
 
 pub mod search;
 
-lazy_static! {
-    pub static ref DIRECTIONS: HashMap<&'static str, Direction> = HashMap::from([
-        ("UP", Direction { x: 0, y: 1, z: 0 }),
-        ("DOWN", Direction { x: 0, y: -1, z: 0 }),
-        ("RIGHT", Direction { x: 1, y: 0, z: 0 }),
-        ("LEFT", Direction { x: -1, y: 0, z: 0 }),
-        ("OUT", Direction { x: 0, y: 0, z: 1 }),
-        ("IN", Direction { x: 0, y: 0, z: -1 }),
-    ]);
+const ZERO_POS: Position = Position { x: 0, y: 0, z: 0 };
+
+#[derive(Default, Copy, Clone)]
+pub struct Bounds {
+    values: [i8; 6],
+    // _up: i8,
+    // _down: i8,
+    // _right: i8,
+    // _left: i8,
+    // _out: i8,
+    // _in: i8,
 }
 
-const ZERO_POS: Position = Position { x: 0, y: 0, z: 0 };
+impl Bounds {
+    pub fn get_by_direction(&self, dir: &str) -> i8 {
+        match dir {
+            "UP" => self.values[0],
+            "DOWN" => self.values[1],
+            "RIGHT" => self.values[2],
+            "LEFT" => self.values[3],
+            "OUT" => self.values[4],
+            "IN" => self.values[5],
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_by_index(&self, index: usize) -> i8 {
+        self.values[index]
+    }
+
+    pub fn update_by_direction(&mut self, dir: &str, value: i8) {
+        match dir {
+            "UP" => self.values[0] = value,
+            "DOWN" => self.values[1] = value,
+            "RIGHT" => self.values[2] = value,
+            "LEFT" => self.values[3] = value,
+            "OUT" => self.values[4] = value,
+            "IN" => self.values[5] = value,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn update_by_index(&mut self, idx: usize, value: i8) {
+        self.values[idx] = value;
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Bitmask {
@@ -163,23 +195,25 @@ impl std::ops::Mul<Direction> for Direction {
 
 pub struct AttemptParams {
     pub input_queue: Vec<u8>,
-    pub bounds: HashMap<Direction, i8>,
+    pub bounds: Bounds,
     pub state: Bitmask,
     pub direction: Option<Direction>,
     pub position: Position,
     pub solution: Vec<(char, u8, Position)>,
 }
 
+const DIRECTIONS: [(&str, Direction); 6] = [
+    ("UP", Direction { x: 0, y: 1, z: 0 }),
+    ("DOWN", Direction { x: 0, y: -1, z: 0 }),
+    ("RIGHT", Direction { x: 1, y: 0, z: 0 }),
+    ("LEFT", Direction { x: -1, y: 0, z: 0 }),
+    ("OUT", Direction { x: 0, y: 0, z: 1 }),
+    ("IN", Direction { x: 0, y: 0, z: -1 }),
+];
+
 impl AttemptParams {
     pub fn new(input_queue: &[u8], size: usize) -> Self {
-        let bounds = HashMap::from([
-            (*DIRECTIONS.get("UP").unwrap(), 0),
-            (*DIRECTIONS.get("DOWN").unwrap(), 0),
-            (*DIRECTIONS.get("RIGHT").unwrap(), 0),
-            (*DIRECTIONS.get("LEFT").unwrap(), 0),
-            (*DIRECTIONS.get("OUT").unwrap(), 0),
-            (*DIRECTIONS.get("IN").unwrap(), 0),
-        ]);
+        let bounds = Bounds::default();
         let state = Bitmask::new(size);
         let direction = None;
         let position = Position { x: 0, y: 0, z: 0 };
@@ -201,19 +235,19 @@ mod tests {
 
     #[test]
     fn dotproduct() {
-        let up = *DIRECTIONS.get("UP").unwrap();
-        let down = *DIRECTIONS.get("DOWN").unwrap();
+        let up = Direction { x: 0, y: 1, z: 0 };
+        let down = Direction { x: 0, y: -1, z: 0 };
         let dprod = up * down;
         assert_eq!(dprod, -1);
 
-        let right = *DIRECTIONS.get("RIGHT").unwrap();
+        let right = Direction { x: 1, y: 0, z: 0 };
         assert_eq!(up * right, 0);
     }
 
     #[test]
     fn direction_inverse() {
-        let up = *DIRECTIONS.get("UP").unwrap();
-        let down = *DIRECTIONS.get("DOWN").unwrap();
+        let up = Direction { x: 0, y: 1, z: 0 };
+        let down = Direction { x: 0, y: -1, z: 0 };
         let inv = up * -1;
         assert_eq!(down, inv);
     }
