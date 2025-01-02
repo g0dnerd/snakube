@@ -8,7 +8,8 @@ use snakube::{search, AttemptParams};
 struct Args {
     #[arg(short, long)]
     size: Option<usize>,
-    #[arg(short, long)]
+
+    #[arg(short, long, value_delimiter = ',')]
     input: Option<Vec<u8>>,
 
     #[arg(short, long)]
