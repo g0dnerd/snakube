@@ -72,23 +72,6 @@ pub fn search(params: &mut AttemptParams, size: usize, _depth: usize) -> Option<
     None
 }
 
-// fn initial_move(params: &mut AttemptParams, element: u8) {
-//     let offset = params.direction * element as i8;
-//     let new_pos = params.position + offset;
-//     // println!(
-//     //     "Making initial move {} from {} to {}",
-//     //     params.direction, params.position, new_pos
-//     // );
-//     for step in 1..=element {
-//         // Get the next coordinate
-//         let candidate = params.position + params.direction * step as i8;
-//         params.state.mark_visited(candidate);
-//     }
-//     params.bounds.set_by_idx(0, new_pos.y, 1); // Update bounds
-//     params.solution.push(new_pos); // Add moves to solution
-//     params.position = new_pos;
-// }
-
 fn check_and_apply_moves(
     params: &mut AttemptParams,
     dir: Direction,
