@@ -4,16 +4,22 @@ pub mod search;
 
 const ZERO_POS: Position = Position { x: 0, y: 0, z: 0 };
 
+const DIRECTIONS: [Direction; 6] = [
+    // We use this order because moving in a positive direction, e.g. having a sign of +1,
+    // means that by adding that sign, we always get the opposite direction and vice versa.
+    Direction { x: 0, y: 1, z: 0 },
+    Direction { x: 0, y: -1, z: 0 },
+    Direction { x: 1, y: 0, z: 0 },
+    Direction { x: -1, y: 0, z: 0 },
+    Direction { x: 0, y: 0, z: 1 },
+    Direction { x: 0, y: 0, z: -1 },
+];
+
 #[derive(Default, Copy, Clone)]
 pub struct Bounds {
     // Stores bounds in each cardinal direction
     // The following indices are used:
-    // 0: UP
-    // 1: DOWN
-    // 2: RIGHT
-    // 3: LEFT
-    // 4: OUT
-    // 5: IN
+    // 0: UP, 1: DOWN, 2: RIGHT, 3: LEFT, 4: OUT, 5: IN
     values: [i8; 6],
 }
 
@@ -58,7 +64,7 @@ impl Bitmask {
         let shift = self.size.trailing_zeros();
         let idx = (padded_x << (2 * shift)) + (padded_y << shift) + padded_z;
         let word_idx = idx >> 6;
-        let bit_idx = idx & 0x3F;
+        let bit_idx = idx & 0x3F; // equivalent to idx % 64
         (word_idx, 1 << bit_idx)
     }
 
@@ -72,8 +78,8 @@ impl Bitmask {
         self.bits[word_idx] |= bit_mask;
     }
 
-    pub fn backtrack(&mut self, bits: Vec<u64>) {
-        self.bits = bits;
+    pub fn backtrack(&mut self, backup: Vec<u64>) {
+        self.bits = backup;
     }
 }
 
@@ -165,29 +171,29 @@ pub struct AttemptParams {
     pub input_queue: Vec<u8>,
     pub bounds: Bounds,
     pub state: Bitmask,
-    pub direction: Option<Direction>,
+    pub direction: Direction,
     pub position: Position,
     pub solution: Vec<Position>,
 }
 
-const DIRECTIONS: [Direction; 6] = [
-    Direction { x: 0, y: 1, z: 0 },
-    Direction { x: 0, y: -1, z: 0 },
-    Direction { x: 1, y: 0, z: 0 },
-    Direction { x: -1, y: 0, z: 0 },
-    Direction { x: 0, y: 0, z: 1 },
-    Direction { x: 0, y: 0, z: -1 },
-];
-
 impl AttemptParams {
     pub fn new(input_queue: &[u8], size: usize) -> Self {
-        let bounds = Bounds::default();
-        let state = Bitmask::new(size);
-        let direction = None;
+        let mut bounds = Bounds::default();
+        let mut state = Bitmask::new(size);
+        let direction = Direction { x: 0, y: 1, z: 0 };
         let position = Position { x: 0, y: 0, z: 0 };
-        let solution = Vec::new();
+        let solution = vec![position];
+
+        // The first element can be oriented in whichever way
+        let mut input_queue = input_queue.to_owned();
+        let element = input_queue.pop().unwrap();
+        for step in 1..=element {
+            let candidate = position + direction * step as i8;
+            state.mark_visited(candidate);
+        }
+        bounds.set_by_idx(0, element as i8, 1); // Update bounds
         Self {
-            input_queue: input_queue.to_owned(),
+            input_queue,
             bounds,
             state,
             direction,
