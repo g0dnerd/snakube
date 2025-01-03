@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
     let mut params = AttemptParams::new(&input, size);
 
     let now = Instant::now();
-    let res = search::search(&mut params, size, 1);
+    let res = search::search(&mut params, size, 3);
     let elapsed = now.elapsed();
 
     if let Some(r) = res {
