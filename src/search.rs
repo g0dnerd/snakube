@@ -1,4 +1,4 @@
-use crate::{AttemptParams, Position, DIRECTIONS, ZERO_POS};
+use crate::{AttemptParams, Bounds, Direction, Position, DIRECTIONS, ZERO_POS};
 
 pub fn search(params: &mut AttemptParams, size: usize, _depth: usize) -> Option<Vec<Position>> {
     // If the input queue is empty, we have found a solution.
@@ -8,14 +8,23 @@ pub fn search(params: &mut AttemptParams, size: usize, _depth: usize) -> Option<
 
     let element = params.input_queue.pop().unwrap();
 
-    'outer: for (dir_idx, dv) in DIRECTIONS.iter().enumerate() {
-        let dir_vector = *dv;
+    // for _ in 1..=depth {
+    //     print!("*");
+    // }
+    // println!();
 
+    // We don't have to check bounds or collisions on the first move
+    // if depth == 1 {
+    //     initial_move(params, element);
+    //     depth += 1;
+    // }
+
+    for (dir_idx, &dir_vector) in DIRECTIONS.iter().enumerate() {
         // Only check directions that are not the same as or the opposite direction to
         // the previously used one. Check all directions for the first iteration.
-        if params.direction.is_none() || (dir_vector * params.direction.unwrap()).abs() != 1 {
+        if (dir_vector * params.direction).abs() != 1 {
             // Movement vector as dot product of direction and distance,
-            // e.g. (2, 0, 0) for a move to the right by 2.
+            // e.g. (2, 0, 0) for a move right by 2.
             let offset = dir_vector * element as i8;
             let new_pos = params.position + offset;
 
@@ -36,47 +45,91 @@ pub fn search(params: &mut AttemptParams, size: usize, _depth: usize) -> Option<
                 continue;
             }
 
-            // Backup & update bounds
-            let original_bounds = params.bounds;
-            params.bounds.set_by_idx(dir_idx, relevant_coord, dir_sign);
+            let original_bounds = params.bounds; // Backup bounds
+            params.bounds.set_by_idx(dir_idx, relevant_coord, dir_sign); // Update bounds
 
             // Iterate over potentially occupied coordinates in steps of 1 and
             // check if any of those coordinates are already occupied.
-            // Add them to state if not.
+            // params.state.backup();
             let original_state = params.state.bits.clone();
-            for step in 1..=element {
-                // Get the coordinate 1 step further
-                let candidate = params.position + dir_vector * step as i8;
-                // If that coordinate is (0, 0, 0) or has been visited, our move is illegal.
-                if candidate == ZERO_POS || params.state.is_visited(candidate) {
-                    params.state.backtrack(original_state); // Restore state
-                    continue 'outer;
-                }
-                params.state.mark_visited(candidate); // Mark now to avoid iterating again
+            if !check_and_apply_moves(params, dir_vector, element, new_pos) {
+                params.state.backtrack(original_state);
+                continue;
             }
 
-            params.solution.push(new_pos); // Add moves to solution
-
-            // Backup pos and direction
+            // Backup and update pos and direction
             let original_pos = params.position;
             let original_dir = params.direction;
             params.position = new_pos;
-            params.direction = Some(dir_vector);
+            params.direction = dir_vector;
 
+            // Recursion
             if let Some(attempt) = search(params, size, _depth + 1) {
                 return Some(attempt);
             }
 
-            // Backtrack
-            params.solution.pop();
-            params.state.backtrack(original_state); // Restore state
-            params.position = original_pos;
-            params.direction = original_dir;
-            params.bounds = original_bounds;
+            backtrack(
+                params,
+                original_state,
+                original_pos,
+                original_dir,
+                original_bounds,
+            );
         }
     }
 
     // Backtrack the input queue
     params.input_queue.push(element);
     None
+}
+
+// fn initial_move(params: &mut AttemptParams, element: u8) {
+//     let offset = params.direction * element as i8;
+//     let new_pos = params.position + offset;
+//     // println!(
+//     //     "Making initial move {} from {} to {}",
+//     //     params.direction, params.position, new_pos
+//     // );
+//     for step in 1..=element {
+//         // Get the next coordinate
+//         let candidate = params.position + params.direction * step as i8;
+//         params.state.mark_visited(candidate);
+//     }
+//     params.bounds.set_by_idx(0, new_pos.y, 1); // Update bounds
+//     params.solution.push(new_pos); // Add moves to solution
+//     params.position = new_pos;
+// }
+
+fn check_and_apply_moves(
+    params: &mut AttemptParams,
+    dir: Direction,
+    element: u8,
+    new_pos: Position,
+) -> bool {
+    for step in 1..=element {
+        // Get the coordinate 1 step further
+        let candidate = params.position + dir * step as i8;
+        // If that coordinate is (0, 0, 0) or has been visited, our move is illegal.
+        if candidate == ZERO_POS || params.state.is_visited(candidate) {
+            return false;
+        }
+        params.state.mark_visited(candidate); // Mark now to avoid iterating again
+    }
+
+    params.solution.push(new_pos); // Add moves to solution
+    true
+}
+
+fn backtrack(
+    params: &mut AttemptParams,
+    original_state: Vec<u64>,
+    original_pos: Position,
+    original_dir: Direction,
+    original_bounds: Bounds,
+) {
+    params.solution.pop();
+    params.state.backtrack(original_state);
+    params.position = original_pos;
+    params.direction = original_dir;
+    params.bounds = original_bounds;
 }
