@@ -8,17 +8,6 @@ pub fn search(params: &mut AttemptParams, size: usize, _depth: usize) -> Option<
 
     let element = params.input_queue.pop().unwrap();
 
-    // for _ in 1..=depth {
-    //     print!("*");
-    // }
-    // println!();
-
-    // We don't have to check bounds or collisions on the first move
-    // if depth == 1 {
-    //     initial_move(params, element);
-    //     depth += 1;
-    // }
-
     for (dir_idx, &dir_vector) in DIRECTIONS.iter().enumerate() {
         // Only check directions that are not the same as or the opposite direction to
         // the previously used one. Check all directions for the first iteration.
